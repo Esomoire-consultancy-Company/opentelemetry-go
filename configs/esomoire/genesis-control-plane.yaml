@@ -1,0 +1,277 @@
+# Esomoire / Genesis Control Plane Bootstrap Manifest
+# Purpose: hardware/server bootstrap location for registry, telemetry, and runtime configuration.
+# This file is safe to fetch from hardware as a public bootstrap manifest.
+# Do NOT put secrets, private keys, passwords, tokens, database passwords, or API keys here.
+
+manifest:
+  id: esomoire-genesis-control-plane
+  version: 0.1.0
+  environment: bootstrap
+  owner: Esomoire Consultancy Company
+  repository: Esomoire-consultancy-Company/opentelemetry-go
+  generated_for: Genesis Registry / EmpireOS / RiverOS / Silk / Warden
+  generated_at: 2026-06-24
+
+bootstrap:
+  mode: public-config-private-secrets
+  hardware_role: genesis-node
+  node_name_env: GENESIS_NODE_NAME
+  node_id_env: GENESIS_NODE_ID
+  site_id_env: GENESIS_SITE_ID
+  service_namespace: esomoire.genesis
+  timezone: Asia/Kolkata
+
+configuration_urls:
+  raw_manifest_url: https://raw.githubusercontent.com/Esomoire-consultancy-Company/opentelemetry-go/main/configs/esomoire/genesis-control-plane.yaml
+  github_blob_url: https://github.com/Esomoire-consultancy-Company/opentelemetry-go/blob/main/configs/esomoire/genesis-control-plane.yaml
+
+runtime_endpoints:
+  # Replace these after your actual server/domain is provisioned.
+  public_api_base_url_env: GENESIS_PUBLIC_API_BASE_URL
+  internal_api_base_url_env: GENESIS_INTERNAL_API_BASE_URL
+  registry_api_path: /v1/registry
+  license_api_path: /v1/licenses
+  evidence_api_path: /v1/evidence
+  payment_api_path: /v1/payments
+  telemetry_api_path: /v1/telemetry
+  health_path: /healthz
+  readiness_path: /readyz
+
+secrets:
+  # These are environment variable names only. Values must be configured on the server, not in GitHub.
+  required_env:
+    - DATABASE_URL
+    - OBJECT_STORE_BUCKET
+    - OBJECT_STORE_ENDPOINT
+    - OBJECT_STORE_ACCESS_KEY_ID
+    - OBJECT_STORE_SECRET_ACCESS_KEY
+    - JWT_ISSUER
+    - JWT_AUDIENCE
+    - JWT_SIGNING_KEY
+    - OTEL_EXPORTER_OTLP_ENDPOINT
+    - OTEL_EXPORTER_OTLP_HEADERS
+
+data_stores:
+  canonical_registry:
+    type: postgres
+    status: required_for_production
+    connection_env: DATABASE_URL
+    purpose: canonical identity, entity, membership, license, and payment-state store
+  object_evidence_store:
+    type: s3-compatible
+    status: required_for_production
+    bucket_env: OBJECT_STORE_BUCKET
+    endpoint_env: OBJECT_STORE_ENDPOINT
+    purpose: evidence files, documents, invoices, attachments, proofs, images, exports
+  cache_runtime:
+    type: redis-compatible
+    status: optional_for_bootstrap_required_for_scale
+    connection_env: REDIS_URL
+    purpose: queue state, session locks, runtime counters, idempotency keys
+  prototype_control_plane:
+    type: airtable
+    status: pending_workspace_access
+    purpose: human-editable registry prototype and operational views
+
+services:
+  - service_name: genesis-registry
+    service_type: canonical-registry-api
+    responsibility: entity records, people, organizations, arcs, product registry, node registration
+    port_env: GENESIS_REGISTRY_PORT
+    default_port: 8081
+  - service_name: empireos-license
+    service_type: license-authority-api
+    responsibility: license issue, suspend, renew, revoke, permission scope, authority graph
+    port_env: EMPIREOS_LICENSE_PORT
+    default_port: 8082
+  - service_name: riveros-evidence
+    service_type: evidence-api
+    responsibility: proof-of-event, document evidence, hash registry, audit event references
+    port_env: RIVEROS_EVIDENCE_PORT
+    default_port: 8083
+  - service_name: silk-payment-runtime
+    service_type: payment-runtime-api
+    responsibility: wallet state, invoices, settlement events, utility billing, payment references
+    port_env: SILK_PAYMENT_PORT
+    default_port: 8084
+  - service_name: warden-observability
+    service_type: observability-and-risk-api
+    responsibility: telemetry intake, anomaly watch, compliance alerts, SLA dashboards
+    port_env: WARDEN_OBSERVABILITY_PORT
+    default_port: 8085
+
+registry_schema:
+  entities:
+    primary_key: entity_id
+    fields:
+      - entity_id
+      - entity_name
+      - entity_type
+      - jurisdiction
+      - status
+      - created_at
+      - updated_at
+  people:
+    primary_key: person_id
+    fields:
+      - person_id
+      - display_name
+      - email
+      - phone
+      - classification
+      - digitalme_id
+      - status
+  organizations:
+    primary_key: organization_id
+    fields:
+      - organization_id
+      - legal_name
+      - trade_name
+      - gstin
+      - cin_or_llpin
+      - jurisdiction
+      - status
+  arcs:
+    primary_key: arc_id
+    fields:
+      - arc_id
+      - arc_name
+      - arc_type
+      - location_id
+      - operating_entity_id
+      - status
+  arc_members:
+    primary_key: arc_member_id
+    fields:
+      - arc_member_id
+      - arc_id
+      - person_id
+      - organization_id
+      - role
+      - classification
+      - onboarding_status
+  products:
+    primary_key: product_id
+    fields:
+      - product_id
+      - product_name
+      - product_family
+      - owner_entity_id
+      - passport_id
+      - status
+  licenses:
+    primary_key: license_id
+    fields:
+      - license_id
+      - license_type
+      - subject_id
+      - issuer_node
+      - scope
+      - status
+      - issued_at
+      - expires_at
+  evidence_records:
+    primary_key: evidence_id
+    fields:
+      - evidence_id
+      - event_type
+      - subject_id
+      - source_service
+      - object_store_uri
+      - content_hash
+      - recorded_at
+  payments:
+    primary_key: payment_id
+    fields:
+      - payment_id
+      - payer_id
+      - payee_id
+      - amount
+      - currency
+      - payment_type
+      - status
+      - settlement_reference
+  tasks:
+    primary_key: task_id
+    fields:
+      - task_id
+      - title
+      - assigned_to
+      - arc_id
+      - priority
+      - status
+      - due_at
+  approvals:
+    primary_key: approval_id
+    fields:
+      - approval_id
+      - approval_type
+      - subject_id
+      - requested_by
+      - approver_id
+      - status
+      - decision_at
+  telemetry_events:
+    primary_key: event_id
+    fields:
+      - event_id
+      - service_name
+      - event_name
+      - entity_type
+      - entity_id
+      - risk_level
+      - trace_id
+      - span_id
+      - occurred_at
+
+telemetry_contract:
+  standard_attributes:
+    service.namespace: esomoire.genesis
+    deployment.environment: bootstrap
+    node.role: genesis-node
+  required_event_attributes:
+    - service.name
+    - event.name
+    - entity.type
+    - entity.id
+    - authority.node
+    - risk.level
+    - trace.id
+    - span.id
+  event_names:
+    - identity.created
+    - identity.verified
+    - entity.created
+    - entity.updated
+    - arc.created
+    - arc.member.onboarded
+    - license.issued
+    - license.revoked
+    - evidence.recorded
+    - payment.authorized
+    - payment.settled
+    - task.assigned
+    - approval.requested
+    - approval.granted
+    - anomaly.detected
+
+hardware_bootstrap_sequence:
+  - fetch_raw_manifest_url
+  - load_environment_variables
+  - validate_required_env
+  - connect_to_database
+  - run_schema_migrations
+  - start_registry_service
+  - start_license_service
+  - start_evidence_service
+  - start_payment_service
+  - start_telemetry_exporter
+  - register_node_health
+
+security_rules:
+  - never_store_secrets_in_this_manifest
+  - hardware_must_use_tls_for_remote_api
+  - database_url_must_be_in_environment_variable
+  - every_write_operation_must_emit_evidence_record
+  - every_privileged_operation_must_emit_telemetry_event
+  - registry_records_require_status_and_timestamp
