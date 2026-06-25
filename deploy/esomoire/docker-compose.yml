@@ -1,0 +1,20 @@
+services:
+  genesis-node:
+    build:
+      context: ../..
+      dockerfile: deploy/esomoire/genesis-node.Dockerfile
+    container_name: esomoire-genesis-node
+    restart: unless-stopped
+    env_file:
+      - ../../configs/esomoire/.env.example
+    environment:
+      GENESIS_MANIFEST_URL: https://raw.githubusercontent.com/Esomoire-consultancy-Company/opentelemetry-go/main/configs/esomoire/genesis-control-plane.yaml
+      DEPLOYMENT_ENVIRONMENT: bootstrap
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8081/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
